@@ -66,11 +66,6 @@
   input[type=number]:focus,input[type=range]:focus{outline:1px solid var(--red)}
   .qpre{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
   .qpre .chip{font-size:11px;padding:4px 8px}
-  .verdict{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--muted);
-    padding:14px 16px;margin-bottom:20px;font-size:14px}
-  .verdict.good{border-left-color:var(--blue);background:var(--goodtint)}
-  .verdict.bad{border-left-color:var(--red);background:var(--badtint)}
-  .verdict .lead{font-weight:700;display:block}
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;
     border:1px solid var(--rule);margin-bottom:22px;background:var(--paper)}
   .kpi{padding:14px 16px;border-left:1px solid var(--grid)}
@@ -119,7 +114,6 @@
       <div id="ctrls-climate"></div>
     </div>
     <div>
-      <div id="verdict-climate" class="verdict good"></div>
       <div class="kpis num" id="kpis-climate"></div>
       <div class="chartwrap">
         <div class="chead">
@@ -285,10 +279,6 @@ function renderClimate(){
     kpi(fmt(m.cumMt,1)+" Mt","Cumulative over "+fmt(m.delay)+" yr")+
     kpi(fmt(cars/1e6,2)+"M","Cars for a year, equivalent");
 
-  const vd=document.getElementById("verdict-climate");
-  const bad=m.cumMt<1;
-  vd.className="verdict "+(bad?"bad":"good");
-  vd.innerHTML=`<span class="lead">${bad?"Weak climate case for speed.":"Delay carries a real climate price."}</span>`;
   drawRate("chart-climate",m,Math.max(20,m.delay+6));
 }
 function drawRate(host,m,horizon){
