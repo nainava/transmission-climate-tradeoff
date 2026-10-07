@@ -66,6 +66,7 @@
   input[type=number]:focus,input[type=range]:focus{outline:1px solid var(--red)}
   .qpre{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
   .qpre .chip{font-size:11px;padding:4px 8px}
+  .qpre .chip.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;
     border:1px solid var(--rule);margin-bottom:22px;background:var(--paper)}
   .kpi{padding:14px 16px;border-left:1px solid var(--grid)}
@@ -92,7 +93,7 @@
 <header>
   <div class="mast"><span class="tab"></span><h1>The climate cost of delayed transmission</h1></div>
   <div class="toolbar">
-    <span class="lbl">NWEC build-out</span>
+    <span class="lbl">Build-out size (NWEC study)</span>
     <button class="chip" data-preset="low" title="3 GW via the Montana–Idaho HVDC line (432 mi, ~$3.1B)">Low · 3 GW</button>
     <button class="chip" data-preset="med" title="9 GW, ~2,074 mi of routed lines (~$10.7B cumulative)">Medium · 9 GW</button>
     <button class="chip" data-preset="high" title="12 GW, ~2,484 mi of routed lines (~$13.9B cumulative)">High · 12 GW</button>
@@ -106,10 +107,10 @@
   <div class="grid">
     <div class="card">
       <h3>Variables <button class="reset" data-reset="climate">Reset</button></h3>
-      <p class="caption">What does the delayed energy get replaced with?</p>
+      <p class="caption">While the line is late, what power fills the gap?</p>
       <div class="qpre">
-        <button class="chip" data-backfill="claim" title="New gas plus coal kept online (build margin), no zero-carbon share">Claim's framing: gas build + coal</button>
-        <button class="chip" data-backfill="nwpcc" title="Sets the zero-carbon share so the effective rate ≈ 0.29 t/MWh">Conservative: NW Council 0.29</button>
+        <button class="chip" data-backfill="claim" title="All of the gap is filled by new gas plants and coal plants kept running (about 0.61 t CO₂ per MWh at default settings)">Worst case: new gas + coal</button>
+        <button class="chip" data-backfill="nwpcc" title="The NW Power &amp; Conservation Council's estimate for today's hydro-heavy grid: about 0.29 t CO₂ per MWh, roughly half the worst case">Today's NW grid (lower estimate)</button>
       </div>
       <div id="ctrls-climate"></div>
     </div>
@@ -122,12 +123,12 @@
           <p class="csub">Annual CO₂ emissions from the electricity this corridor would serve, million tonnes per year</p>
         </div>
         <div class="legend">
-          <span><span class="sw" style="background:var(--red)"></span>Delayed: gas &amp; coal backfill</span>
+          <span><span class="sw" style="background:var(--red)"></span>Delayed: gas &amp; coal fill the gap</span>
           <span><span class="sw" style="background:var(--blue)"></span>On time: clean corridor</span>
         </div>
         <div id="chart-climate"></div>
-        <p class="csource">Two futures for the same demand. While the line is late, gas and coal fill in; if the backfill
-          decarbonizes on its own, the red line slopes down and each late year costs less. Once the line is online both
+        <p class="csource">Two futures for the same demand. While the line is late, gas and coal fill in; if the replacement
+          power gets cleaner on its own, the red line slopes down and each late year costs less. Once the line is online both
           paths are clean. The gap is the delay penalty, labelled in tonnes rather than left for the eye to measure.</p>
       </div>
     </div>
@@ -136,9 +137,10 @@
 
 <div class="foot">
   <b>How the numbers are built.</b>
-  Energy delivered = capacity (MW) × 8,760 h × capacity factor × (1 − line losses). Backfill emission
-  factor = (1 − zero-carbon share) × [coal share × coal EF + (1 − coal share) × gas EF], falling by the decarbonization
-  rate each year. Delay penalty = ∫ energy × (backfill EF(t) − residual EF) over the delay years; car-equivalents assume
+  Energy delivered = capacity (MW) × 8,760 h × capacity factor × (1 − line losses). CO₂ per MWh of
+  replacement power = (1 − clean share) × [coal share × coal emissions + (1 − coal share) × gas emissions], falling by
+  the “getting cleaner” rate each year. Delay penalty = energy delivered × (replacement CO₂ per MWh − emissions once
+  running), added up over each year of delay; car-equivalents assume
   4.6 t CO₂ per car-year. Everything runs locally in your browser; the share link carries only the values you changed.
   <br><br>
   <b>Sources for default values.</b>
@@ -175,35 +177,35 @@ const S=t=>`<span class="tag s">sourced</span>${t}`, G=t=>`<span class="tag g">g
 /* ---------- variable definitions ---------- */
 const CFG = {
   climate:[
-    {id:"c_mw",   label:"Wind delivery enabled", unit:"MW", min:0,max:12000,step:100,value:3000,
-      def:"Wind capacity the new line lets reach market.",
+    {id:"c_mw",   label:"Wind power the line carries", unit:"MW", min:0,max:12000,step:100,value:3000,
+      def:"How much wind generation the new line lets reach customers.",
       src:G("NWEC Low build-out = +3,000 MW (Montana–Idaho HVDC); North Plains Connector is also 3,000 MW. Medium 9,000 / High 12,000.")},
-    {id:"c_cf",   label:"Wind capacity factor", unit:"%", min:15,max:60,step:1,value:40,
-      def:"Share of nameplate the farm actually produces over a year (windiness × availability).",
+    {id:"c_cf",   label:"Wind farm output (capacity factor)", unit:"%", min:15,max:60,step:1,value:40,
+      def:"Share of its maximum output a wind farm actually produces over a year.",
       src:S("EIA: MT fleet avg ~33%; modern turbines at high-quality MT sites ~40–45% (NREL ATB).")},
     {id:"c_loss", label:"Line losses", unit:"%", min:0,max:15,step:0.5,value:4,
-      def:"Energy lost between Montana and load; only delivered energy displaces backfill.",
+      def:"Power lost along the line between Montana and customers.",
       src:S("HVDC ~3%/1,000 km + ~0.6–1% per converter. 432 mi (695 km) ≈ 2% + 1.5% ≈ 3.5–4%.")},
     {id:"c_delay",label:"Years transmission is delayed", unit:"yr", min:0,max:20,step:1,value:5,
       def:"How many years late the line comes online versus the on-time case.",
-      src:X_("Context: NPC needs 4 yr from construction start (2028→2032); the Montana–Idaho line was first proposed in 2008 (MSTI) and is still unbuilt.")},
-    {id:"c_coal", label:"Coal share of fossil backfill", unit:"%", min:0,max:100,step:1,value:35,
-      def:"Of the fossil energy that fills the gap, the fraction from coal rather than gas.",
+      src:X_("Context: the North Plains Connector needs 4 yr from construction start (2028→2032); the Montana–Idaho line was first proposed in 2008 (MSTI) and is still unbuilt.")},
+    {id:"c_coal", label:"Coal share of the replacement power", unit:"%", min:0,max:100,step:1,value:35,
+      def:"Of the fossil power filling the gap, how much comes from coal rather than gas.",
       src:X_("NWEC assumes Colstrip 3 & 4 (1,480 MW) stay online through 2035; WA's clean-energy law bars coal from WA rates after 2025, which pushes this down.")},
-    {id:"c_zero", label:"Zero-carbon share of backfill", unit:"%", min:0,max:90,step:1,value:0,
-      def:"Share of the gap met without new emissions (existing hydro, surplus renewables). 0 = the claim's framing: all gas + coal.",
-      src:G("NW Council's avoided-emissions rate (~0.29 t/MWh) implies ~50% at default coal/gas values. Use the preset above.")},
-    {id:"c_decl", label:"Backfill decarbonization", unit:"%/yr", min:0,max:15,step:0.5,value:0,
-      def:"Annual fall in the backfill emission factor as coal retires and state clean-energy mandates bite.",
+    {id:"c_zero", label:"Clean share of the replacement power", unit:"%", min:0,max:90,step:1,value:0,
+      def:"Share of the gap filled without new emissions (existing hydro, spare renewables). 0 = all gas and coal.",
+      src:G("NW Council's avoided-emissions rate (~0.29 t/MWh) implies ~50% at default coal/gas values. The “Today’s NW grid” button sets this.")},
+    {id:"c_decl", label:"Replacement power getting cleaner", unit:"%/yr", min:0,max:15,step:0.5,value:0,
+      def:"How fast the replacement power’s emissions fall each year as coal retires and state clean-energy laws take effect.",
       src:X_("OR requires 100% clean by 2040, WA by 2045; roughly 3–6%/yr gets there. 0 = frozen grid.")},
-    {id:"c_gasef",label:"Gas (CCGT) emission factor", unit:"t/MWh", min:0.2,max:0.5,step:0.01,value:0.40,
-      def:"CO₂ emitted per MWh by a combined-cycle gas plant.",
+    {id:"c_gasef",label:"Gas plant emissions", unit:"t/MWh", min:0.2,max:0.5,step:0.01,value:0.40,
+      def:"CO₂ per MWh from a modern (combined-cycle) gas plant.",
       src:S("EPA/EIA: ~890 lb CO₂/MWh ≈ 0.40 t/MWh.")},
-    {id:"c_coalef",label:"Coal emission factor", unit:"t/MWh", min:0.7,max:1.1,step:0.01,value:0.99,
-      def:"CO₂ emitted per MWh by a coal plant.",
+    {id:"c_coalef",label:"Coal plant emissions", unit:"t/MWh", min:0.7,max:1.1,step:0.01,value:0.99,
+      def:"CO₂ per MWh from a coal plant.",
       src:S("EPA/EIA: ~2,180 lb CO₂/MWh ≈ 0.99 t/MWh.")},
-    {id:"c_cleanef",label:"Residual EF once online", unit:"t/MWh", min:0,max:0.4,step:0.01,value:0,
-      def:"Leftover emissions per MWh after the line is built (curtailment, backup); usually near zero.",
+    {id:"c_cleanef",label:"Emissions once the line is running", unit:"t/MWh", min:0,max:0.4,step:0.01,value:0,
+      def:"Leftover CO₂ per MWh after the line is built (e.g. backup power); usually near zero.",
       src:X_("~0 for a clean corridor.")},
   ],
 };
@@ -274,9 +276,9 @@ function renderClimate(){
   const m=climateModel(), cars=m.cumMt*1e6/4.6;
   document.getElementById("kpis-climate").innerHTML=
     kpi(fmt(m.energyMWh/1e6,1)+" TWh","Clean energy delivered / yr")+
-    kpi(fmt(m.ef0,2),"Effective backfill EF (t/MWh)")+
+    kpi(fmt(m.ef0,2)+" t","CO₂ per MWh of replacement power")+
     kpi(fmt(m.annualMt,2)+" Mt","CO₂ in first year of delay")+
-    kpi(fmt(m.cumMt,1)+" Mt","Cumulative over "+fmt(m.delay)+" yr")+
+    kpi(fmt(m.cumMt,1)+" Mt","Total over "+fmt(m.delay)+" yr")+
     kpi(fmt(cars/1e6,2)+"M","Cars for a year, equivalent");
 
   drawRate("chart-climate",m,Math.max(20,m.delay+6));
@@ -290,7 +292,7 @@ function drawRate(host,m,horizon){
   sc.ticks.forEach(yv=>{const y=Y(yv), zero=yv===0;
     s+=`<line x1="${mg.l}" y1="${y}" x2="${W-mg.r}" y2="${y}" stroke="${zero?'#b9bfc0':COL.grid}"/>`;
     s+=txt(mg.l-9,y+4,fmt(yv,sc.dec),{anchor:'end',fill:COL.ink,size:11});});
-  s+=txt(16,(mg.t+H-mg.b)/2,"CO₂ emissions (Mt per year)",{rot:-90,anchor:'middle',size:11.5,fill:COL.muted});
+  s+=txt(16,(mg.t+H-mg.b)/2,"CO₂ (million tonnes per year)",{rot:-90,anchor:'middle',size:11.5,fill:COL.muted});
   for(let x=0;x<=horizon;x+=5)s+=txt(X(x),H-24,x,{anchor:'middle',fill:COL.muted});
   s+=txt(X(horizon/2),H-6,"Years from decision",{anchor:'middle',size:11.5,fill:COL.muted});
   // delayed backfill curve, sampled so a decarbonizing backfill slopes down
@@ -326,11 +328,16 @@ function applyNWEC(k){
   setVal("c_mw",NWEC[k].mw); render();
   flash(`Loaded NWEC ${k==="med"?"Medium":k[0].toUpperCase()+k.slice(1)}`);
 }
-function applyBackfill(k){
-  if(k==="claim"){setVal("c_zero",0);}
-  else{const fossil=V("c_coal")/100*V("c_coalef")+(1-V("c_coal")/100)*V("c_gasef");
-    setVal("c_zero",Math.round(Math.max(0,1-0.29/fossil)*100));}
-  render();
+// Each button sets only the clean share; "Today's NW grid" picks the share that lands at the NW Council's 0.29 t/MWh.
+const NW_RATE=0.29;
+function backfillZero(k){
+  if(k==="claim") return 0;
+  const fossil=V("c_coal")/100*V("c_coalef")+(1-V("c_coal")/100)*V("c_gasef");
+  return Math.round(Math.max(0,1-NW_RATE/fossil)*100);
+}
+function applyBackfill(k){setVal("c_zero",backfillZero(k)); render();}
+function markBackfill(){
+  document.querySelectorAll("[data-backfill]").forEach(b=>b.classList.toggle("on",V("c_zero")===backfillZero(b.dataset.backfill)));
 }
 
 /* ---------- share link: only non-default values go in the URL hash ---------- */
@@ -356,7 +363,7 @@ document.getElementById("share").addEventListener("click",()=>{
 
 /* ---------- wiring ---------- */
 function markChanged(){ALL.forEach(c=>document.getElementById("w_"+c.id).classList.toggle("changed",V(c.id)!==DEFAULTS[c.id]));}
-function render(){renderClimate();markChanged();syncUrl();}
+function render(){renderClimate();markChanged();markBackfill();syncUrl();}
 buildControls("climate");
 document.getElementById("var-notes").innerHTML=CFG.climate.map(c=>
   `<dt>${c.label} <span class="u">${c.unit}</span></dt><dd>${c.def}<div class="src">${c.src}</div></dd>`).join("");
