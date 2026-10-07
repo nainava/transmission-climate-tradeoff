@@ -281,12 +281,15 @@ function renderClimate(){
     kpi(fmt(m.cumMt,1)+" Mt","Total over "+fmt(m.delay)+" yr")+
     kpi(fmt(cars/1e6,2)+"M","Cars for a year, equivalent");
 
-  drawRate("chart-climate",m,Math.max(20,m.delay+6));
+  drawRate("chart-climate",m,25);
 }
 function drawRate(host,m,horizon){
   const W=680,H=340,mg={l:64,r:74,t:22,b:48};
   const E=m.energyMWh/1e6, back=t=>E*m.ef(t), clean=E*m.cleanef, delay=m.delay;
-  const sc=niceScale(Math.max(back(0),clean,0.001),5);
+  // fixed y-axis: stays put while sliders move, so changes show as the line moving, not the axis.
+  // It only steps up (8 → 16 → 32 …) when a value would otherwise run off the top.
+  const peak=Math.max(back(0),clean), top=[8,16,32,64,128].find(v=>peak<=v)||128;
+  const sc={max:top,dec:0,ticks:[0,1,2,3,4].map(i=>i*top/4)};
   const X=x=>mg.l+(x/horizon)*(W-mg.l-mg.r), Y=y=>H-mg.b-(y/sc.max)*(H-mg.t-mg.b);
   let s=svgEl(W,H);
   sc.ticks.forEach(yv=>{const y=Y(yv), zero=yv===0;
