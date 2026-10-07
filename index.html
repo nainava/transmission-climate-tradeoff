@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transmission Trade-off Explorer</title>
+<style>
+  :root{
+    --paper:#ffffff; --page:#f3f5f6; --ink:#121212; --muted:#66706e; --faint:#8a938f;
+    --rule:#d8dcdd; --grid:#e6e9ea; --tint:#f6f7f8;
+    --red:#e3120b; --redsoft:rgba(227,18,11,.14);
+    --blue:#006ba2; --cyan:#3ebcd2; --teal:#379a8b; --amber:#e6a13c;
+    --goodtint:#eef4f7; --badtint:#fdeeed;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);
+    font:15px/1.55 "Helvetica Neue",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums}
+  header{background:var(--paper);border-bottom:1px solid var(--rule);padding:20px 30px 16px}
+  .mast{display:flex;align-items:center;gap:12px}
+  .mast .tab{width:34px;height:11px;background:var(--red);flex:none}
+  h1{margin:0;font-size:23px;font-weight:800;letter-spacing:-.2px}
+  .sub{color:var(--muted);font-size:13px;max-width:860px;margin:8px 0 0}
+  .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;font-size:12px;color:var(--muted)}
+  .toolbar .lbl{font-weight:700;text-transform:uppercase;letter-spacing:.8px;font-size:10.5px;color:var(--ink);margin-right:2px}
+  .chip{background:var(--paper);border:1px solid var(--rule);color:var(--ink);padding:5px 10px;cursor:pointer;
+    font:600 12px/1 "Helvetica Neue",Helvetica,Arial,sans-serif}
+  .chip:hover{border-color:var(--ink)}
+  .chip.share{margin-left:auto;border-color:var(--red);color:var(--red)}
+  .toolbar .sep{width:1px;height:18px;background:var(--rule);margin:0 6px}
+  #share-msg{font-size:11.5px;color:var(--blue);min-width:80px}
+  .view{padding:24px 30px 70px;max-width:1240px}
+  .grid{display:grid;grid-template-columns:360px 1fr;gap:26px;align-items:start}
+  @media(max-width:940px){.grid{grid-template-columns:1fr}}
+  @media(max-width:600px){header{padding-left:16px;padding-right:16px}.view{padding:18px 16px 60px}.foot{padding:0 16px 40px}
+    .chip.share{margin-left:0}}
+  .card{background:var(--paper);border:1px solid var(--rule);padding:18px 20px}
+  .card h3{margin:0 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--ink)}
+  .card .caption{color:var(--muted);font-size:12px;margin:0 0 14px}
+  .reset{background:none;border:1px solid var(--rule);color:var(--muted);
+    padding:4px 10px;cursor:pointer;font-size:11px;float:right}
+  .ctrl{padding:12px 0;border-top:1px solid var(--grid)}
+  .ctrl:first-of-type{border-top:none}
+  .ctrl .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .ctrl label{font-size:14px;font-weight:600}
+  .ctrl .unit{color:var(--faint);font-size:11px;white-space:nowrap}
+  .ctrl .def{color:var(--muted);font-size:12px;line-height:1.4;margin:2px 0 4px}
+  .ctrl .src{color:var(--faint);font-size:11px;line-height:1.35;margin:0 0 8px;font-style:italic}
+  .ctrl .src .tag{font-style:normal;font-weight:700;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;
+    padding:1px 4px;margin-right:4px;border:1px solid currentColor}
+  .ctrl .src .tag.s{color:var(--blue)} .ctrl .src .tag.g{color:var(--teal)} .ctrl .src .tag.x{color:var(--amber)}
+  .ctrl .inrow{display:flex;gap:10px;align-items:center}
+  .ctrl.changed label::after{content:" •";color:var(--red)}
+  input[type=range]{flex:1;accent-color:var(--red);height:3px;min-width:0}
+  input[type=number]{width:74px;background:var(--paper);border:1px solid var(--rule);
+    color:var(--ink);padding:5px 7px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+  input[type=number]:focus,input[type=range]:focus{outline:1px solid var(--red)}
+  .qpre{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+  .qpre .chip{font-size:11px;padding:4px 8px}
+  .verdict{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--muted);
+    padding:14px 16px;margin-bottom:20px;font-size:14px}
+  .verdict.good{border-left-color:var(--blue);background:var(--goodtint)}
+  .verdict.bad{border-left-color:var(--red);background:var(--badtint)}
+  .verdict .lead{font-weight:700;display:block;margin-bottom:2px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;
+    border:1px solid var(--rule);margin-bottom:22px;background:var(--paper)}
+  .kpi{padding:14px 16px;border-left:1px solid var(--grid)}
+  .kpi:first-child{border-left:none}
+  .kpi .n{font-size:26px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+  .kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;line-height:1.3}
+  .chartwrap{background:var(--paper);border:1px solid var(--rule);padding:18px 20px 14px;margin-bottom:22px}
+  .chead .rtab{width:26px;height:9px;background:var(--red);display:block;margin-bottom:9px}
+  .chead h2{margin:0;font-size:16px;font-weight:800;letter-spacing:-.2px}
+  .chead .csub{margin:2px 0 4px;font-size:13px;color:var(--muted)}
+  .legend{display:flex;gap:18px;font-size:12px;color:var(--muted);margin:8px 0 4px;flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:13px;height:13px;display:inline-block}
+  svg{width:100%;height:auto;display:block}
+  .csource{border-top:1px solid var(--rule);margin-top:8px;padding-top:8px;
+    font-size:11px;color:var(--faint)}
+  .foot{color:var(--muted);font-size:12.5px;line-height:1.6;padding:0 30px 44px;max-width:1000px}
+  .foot b{color:var(--ink)}
+  .foot a{color:var(--blue)}
+  code{background:var(--tint);border:1px solid var(--rule);padding:0 4px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="mast"><span class="tab"></span><h1>The transmission trade-off</h1></div>
+  <div class="toolbar">
+    <span class="lbl">NWEC build-out</span>
+    <button class="chip" data-preset="low" title="3 GW via the Montana–Idaho HVDC line (432 mi, ~$3.1B)">Low · 3 GW</button>
+    <button class="chip" data-preset="med" title="9 GW, ~2,074 mi of routed lines (~$10.7B cumulative)">Medium · 9 GW</button>
+    <button class="chip" data-preset="high" title="12 GW, ~2,484 mi of routed lines (~$13.9B cumulative)">High · 12 GW</button>
+    <span class="sep"></span>
+    <button class="chip share" id="share">Copy link to this scenario</button>
+    <span id="share-msg" aria-live="polite"></span>
+  </div>
+</header>
+
+<div class="view" id="view-climate">
+  <div class="grid">
+    <div class="card">
+      <h3>Variables <button class="reset" data-reset="climate">Reset</button></h3>
+      <p class="caption">What does the delayed energy get replaced with?</p>
+      <div class="qpre">
+        <button class="chip" data-backfill="claim" title="New gas plus coal kept online (build margin), no zero-carbon share">Claim's framing: gas build + coal</button>
+        <button class="chip" data-backfill="nwpcc" title="Sets the zero-carbon share so the effective rate ≈ 0.29 t/MWh">Conservative: NW Council 0.29</button>
+      </div>
+      <div id="ctrls-climate"></div>
+    </div>
+    <div>
+      <div id="verdict-climate" class="verdict good"></div>
+      <div class="kpis num" id="kpis-climate"></div>
+      <div class="chartwrap">
+        <div class="chead">
+          <span class="rtab"></span>
+          <h2>The price of a slow line</h2>
+          <p class="csub">Annual CO₂ emissions from the electricity this corridor would serve, million tonnes per year</p>
+        </div>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--red)"></span>Delayed: gas &amp; coal backfill</span>
+          <span><span class="sw" style="background:var(--blue)"></span>On time: clean corridor</span>
+        </div>
+        <div id="chart-climate"></div>
+        <p class="csource">Two futures for the same demand. While the line is late, gas and coal fill in; if the backfill
+          decarbonizes on its own, the red line slopes down and each late year costs less. Once the line is online both
+          paths are clean. The gap is the delay penalty, labelled in tonnes rather than left for the eye to measure.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="foot">
+  <b>How the numbers are built.</b>
+  Energy delivered = capacity (MW) × 8,760 h × capacity factor × (1 − line losses). Backfill emission
+  factor = (1 − zero-carbon share) × [coal share × coal EF + (1 − coal share) × gas EF], falling by the decarbonization
+  rate each year. Delay penalty = ∫ energy × (backfill EF(t) − residual EF) over the delay years; car-equivalents assume
+  4.6 t CO₂ per car-year. Everything runs locally in your browser; the share link carries only the values you changed.
+  <br><br>
+  <b>Sources for default values.</b>
+  Emission factors — <a href="https://www.epa.gov/energy/greenhouse-gas-equivalencies-calculator-calculations-and-references" target="_blank" rel="noopener">EPA GHG Equivalencies</a> &amp;
+  <a href="https://www.eia.gov/todayinenergy/detail.php?id=48296" target="_blank" rel="noopener">EIA</a> (coal ≈2,180 lb, gas CCGT ≈890 lb CO₂/MWh).
+  NW avoided-emissions rate ≈0.58 lb/kWh (≈0.29 t/MWh) — <a href="https://www.nwcouncil.org/energy/marginal-carbon-dioxide-production-rates-of-the-nw-power-systemdraft-for-comment/" target="_blank" rel="noopener">NW Power &amp; Conservation Council</a> (2018 report to the WA Legislature).
+  Corridor scale, line length and timing — NWEC / Energy Strategies, <i>Montana Regional Transmission Connectivity Study</i>
+  (Low +3 GW via a 432-mi Montana–Idaho HVDC line, ~$3.1B; Medium +9 GW, ~2,074 routed mi; High +12 GW, ~2,484 mi;
+  low route 58% in existing corridors, 2% high environmental risk; North Plains Connector 3 GW, construction 2028 → in service 2032;
+  the Montana–Idaho concept dates to the 2008 MSTI proposal and is still unbuilt).
+  HVDC losses — <a href="http://large.stanford.edu/courses/2025/ph240/uslu2/" target="_blank" rel="noopener">Stanford PH240</a> &amp;
+  <a href="https://www.eia.gov/analysis/studies/electricity/hvdctransmission/pdf/transmission.pdf" target="_blank" rel="noopener">EIA HVDC study</a>
+  (~3% per 1,000 km on the line plus ~0.6–1% per converter station).
+  Capacity factors — <a href="https://atb.nrel.gov/electricity/2024/land-based_wind" target="_blank" rel="noopener">NREL 2024 ATB</a>,
+  <a href="https://windexchange.energy.gov/states/wa" target="_blank" rel="noopener">DOE WINDExchange</a> &amp;
+  <a href="https://www.montana.edu/wind/documents/Montana%20Wind%20Status%20Report.pdf" target="_blank" rel="noopener">MSU Montana Wind Status</a> (MT fleet ~33%, high-quality sites 40%+; Columbia Basin ~28–32%).
+  Passenger-vehicle CO₂ — <a href="https://www.epa.gov/greenvehicles/greenhouse-gas-emissions-typical-passenger-vehicle" target="_blank" rel="noopener">EPA</a> (4.6 t/yr).
+</div>
+
+<script>
+const HOURS = 8760;
+const COL = {red:"#e3120b", blue:"#006ba2", cyan:"#3ebcd2", grid:"#e6e9ea", gray:"#9aa3a1",
+             ink:"#121212", muted:"#66706e", redsoft:"rgba(227,18,11,.14)"};
+const S=t=>`<span class="tag s">sourced</span>${t}`, G=t=>`<span class="tag g">grounded</span>${t}`,
+      X_=t=>`<span class="tag x">scenario</span>${t}`;
+
+/* ---------- variable definitions ---------- */
+const CFG = {
+  climate:[
+    {id:"c_mw",   label:"Wind delivery enabled", unit:"MW", min:0,max:12000,step:100,value:3000,
+      def:"Wind capacity the new line lets reach market.",
+      src:G("NWEC Low build-out = +3,000 MW (Montana–Idaho HVDC); North Plains Connector is also 3,000 MW. Medium 9,000 / High 12,000.")},
+    {id:"c_cf",   label:"Wind capacity factor", unit:"%", min:15,max:60,step:1,value:40,
+      def:"Share of nameplate the farm actually produces over a year (windiness × availability).",
+      src:S("EIA: MT fleet avg ~33%; modern turbines at high-quality MT sites ~40–45% (NREL ATB).")},
+    {id:"c_loss", label:"Line losses", unit:"%", min:0,max:15,step:0.5,value:4,
+      def:"Energy lost between Montana and load; only delivered energy displaces backfill.",
+      src:S("HVDC ~3%/1,000 km + ~0.6–1% per converter. 432 mi (695 km) ≈ 2% + 1.5% ≈ 3.5–4%.")},
+    {id:"c_delay",label:"Years transmission is delayed", unit:"yr", min:0,max:20,step:1,value:5,
+      def:"How many years late the line comes online versus the on-time case.",
+      src:X_("Context: NPC needs 4 yr from construction start (2028→2032); the Montana–Idaho line was first proposed in 2008 (MSTI) and is still unbuilt.")},
+    {id:"c_coal", label:"Coal share of fossil backfill", unit:"%", min:0,max:100,step:1,value:35,
+      def:"Of the fossil energy that fills the gap, the fraction from coal rather than gas.",
+      src:X_("NWEC assumes Colstrip 3 & 4 (1,480 MW) stay online through 2035; WA's clean-energy law bars coal from WA rates after 2025, which pushes this down.")},
+    {id:"c_zero", label:"Zero-carbon share of backfill", unit:"%", min:0,max:90,step:1,value:0,
+      def:"Share of the gap met without new emissions (existing hydro, surplus renewables). 0 = the claim's framing: all gas + coal.",
+      src:G("NW Council's avoided-emissions rate (~0.29 t/MWh) implies ~50% at default coal/gas values. Use the preset above.")},
+    {id:"c_decl", label:"Backfill decarbonization", unit:"%/yr", min:0,max:15,step:0.5,value:0,
+      def:"Annual fall in the backfill emission factor as coal retires and state clean-energy mandates bite.",
+      src:X_("OR requires 100% clean by 2040, WA by 2045; roughly 3–6%/yr gets there. 0 = frozen grid.")},
+    {id:"c_gasef",label:"Gas (CCGT) emission factor", unit:"t/MWh", min:0.2,max:0.5,step:0.01,value:0.40,
+      def:"CO₂ emitted per MWh by a combined-cycle gas plant.",
+      src:S("EPA/EIA: ~890 lb CO₂/MWh ≈ 0.40 t/MWh.")},
+    {id:"c_coalef",label:"Coal emission factor", unit:"t/MWh", min:0.7,max:1.1,step:0.01,value:0.99,
+      def:"CO₂ emitted per MWh by a coal plant.",
+      src:S("EPA/EIA: ~2,180 lb CO₂/MWh ≈ 0.99 t/MWh.")},
+    {id:"c_cleanef",label:"Residual EF once online", unit:"t/MWh", min:0,max:0.4,step:0.01,value:0,
+      def:"Leftover emissions per MWh after the line is built (curtailment, backup); usually near zero.",
+      src:X_("~0 for a clean corridor.")},
+  ],
+};
+const ALL=Object.values(CFG).flat();
+const DEFAULTS={}; ALL.forEach(c=>DEFAULTS[c.id]=c.value);
+
+/* ---------- build controls ---------- */
+function setVal(id,v){
+  const c=ALL.find(c=>c.id===id); if(!c) return;
+  v=Math.min(c.max,Math.max(c.min,+v)); if(!isFinite(v)) return;
+  document.getElementById(id).value=v; document.getElementById(id+"_n").value=v;
+}
+function buildControls(tab){
+  const host=document.getElementById("ctrls-"+tab);
+  CFG[tab].forEach(c=>{
+    const wrap=document.createElement("div"); wrap.className="ctrl"; wrap.id="w_"+c.id;
+    wrap.innerHTML=`
+      <div class="row"><label for="${c.id}">${c.label}</label><span class="unit">${c.unit}</span></div>
+      <div class="def">${c.def}</div>
+      <div class="src">${c.src}</div>
+      <div class="inrow">
+        <input type="range" id="${c.id}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.value}">
+        <input type="number" class="num" id="${c.id}_n" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.value}" aria-label="${c.label}">
+      </div>`;
+    host.appendChild(wrap);
+    const r=wrap.querySelector("input[type=range]"), n=wrap.querySelector("input[type=number]");
+    r.addEventListener("input",()=>{n.value=r.value;render();});
+    n.addEventListener("input",()=>{if(n.value!==""){r.value=n.value;render();}});
+  });
+}
+const V=id=>parseFloat(document.getElementById(id).value);
+const fmt=(x,d=0)=>x.toLocaleString(undefined,{maximumFractionDigits:d,minimumFractionDigits:d});
+const kpi=(n,l)=>`<div class="kpi"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+const svgEl=(w,h)=>`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet">`;
+
+/* ---------- honest axis: rounded ticks, stable steps ---------- */
+function niceNum(range,round){
+  range=range||1; const exp=Math.floor(Math.log10(range)); const f=range/Math.pow(10,exp);
+  let nf; if(round){nf=f<1.5?1:f<3?2:f<7?5:10;} else {nf=f<=1?1:f<=2?2:f<=5?5:10;}
+  return nf*Math.pow(10,exp);
+}
+function niceScale(maxData,ticks){
+  ticks=ticks||5;
+  if(!(maxData>0)) return {max:1,step:0.25,ticks:[0,.25,.5,.75,1],dec:2};
+  const step=niceNum(maxData/(ticks-1),true);
+  const max=Math.ceil(maxData/step)*step, arr=[];
+  for(let v=0;v<=max+step*1e-6;v+=step) arr.push(v);
+  const dec=step<0.1?2:step<1?1:0;
+  return {max,step,ticks:arr,dec};
+}
+const txt=(x,y,t,o)=>{o=o||{};return `<text x="${x}" y="${y}" fill="${o.fill||COL.muted}" font-size="${o.size||11}"`+
+  ` text-anchor="${o.anchor||'start'}"${o.weight?` font-weight="${o.weight}"`:''}`+
+  ` font-variant-numeric="tabular-nums"${o.rot?` transform="rotate(${o.rot} ${x} ${y})"`:''}>${t}</text>`;};
+
+/* ---------- model ---------- */
+function climateModel(){
+  const mw=V("c_mw"),cf=V("c_cf")/100,loss=V("c_loss")/100,delay=V("c_delay"),coal=V("c_coal")/100,
+        zero=V("c_zero")/100,decl=V("c_decl")/100,gasef=V("c_gasef"),coalef=V("c_coalef"),cleanef=V("c_cleanef");
+  const energyMWh=mw*HOURS*cf*(1-loss);
+  const fossilEF=coal*coalef+(1-coal)*gasef, ef0=(1-zero)*fossilEF;
+  const ef=t=>ef0*Math.pow(1-decl,t);
+  // penalty = ∫0^delay E·max(0, ef(t) − clean) dt, integrated numerically so the clamp is honoured
+  const N=Math.max(1,Math.round(delay*40)); let cum=0;
+  for(let i=0;i<N;i++){const t=(i+.5)*delay/N; cum+=Math.max(0,ef(t)-cleanef)*delay/N;}
+  return {mw,cf,loss,delay,decl,cleanef,energyMWh,fossilEF,ef0,ef,
+          annualMt:energyMWh*Math.max(0,ef0-cleanef)/1e6, cumMt:energyMWh*cum/1e6};
+}
+function renderClimate(){
+  const m=climateModel(), cars=m.cumMt*1e6/4.6;
+  document.getElementById("kpis-climate").innerHTML=
+    kpi(fmt(m.energyMWh/1e6,1)+" TWh","Clean energy delivered / yr")+
+    kpi(fmt(m.ef0,2),"Effective backfill EF (t/MWh)")+
+    kpi(fmt(m.annualMt,2)+" Mt","CO₂ in first year of delay")+
+    kpi(fmt(m.cumMt,1)+" Mt","Cumulative over "+fmt(m.delay)+" yr")+
+    kpi(fmt(cars/1e6,2)+"M","Cars for a year, equivalent");
+
+  const vd=document.getElementById("verdict-climate");
+  const nw=m.ef0<0.35?` The backfill here (${fmt(m.ef0,2)} t/MWh) is near the NW Council's 0.29 avoided rate — the conservative read.`:
+    m.ef0>0.45?` Note: the backfill (${fmt(m.ef0,2)} t/MWh) is well above the NW Council's 0.29 avoided rate; that assumes new gas and coal, not today's hydro-heavy margin.`:"";
+  if(m.cumMt<1){
+    vd.className="verdict bad";
+    vd.innerHTML=`<span class="lead">Weak climate case for speed.</span>With this backfill the delay adds only
+      ${fmt(m.cumMt,1)} Mt CO₂: a near-clean counterfactual means faster transmission buys little climate benefit here.${nw}`;
+  }else{
+    vd.className="verdict good";
+    vd.innerHTML=`<span class="lead">Delay carries a real climate price.</span>A ${fmt(m.delay)}-year delay locks in
+      <b>${fmt(m.cumMt,1)} Mt CO₂</b>, roughly ${fmt(cars/1e6,2)} million cars on the road for a year.${nw}`;
+  }
+  drawRate("chart-climate",m,Math.max(20,m.delay+6));
+}
+function drawRate(host,m,horizon){
+  const W=680,H=340,mg={l:64,r:74,t:22,b:48};
+  const E=m.energyMWh/1e6, back=t=>E*m.ef(t), clean=E*m.cleanef, delay=m.delay;
+  const sc=niceScale(Math.max(back(0),clean,0.001),5);
+  const X=x=>mg.l+(x/horizon)*(W-mg.l-mg.r), Y=y=>H-mg.b-(y/sc.max)*(H-mg.t-mg.b);
+  let s=svgEl(W,H);
+  sc.ticks.forEach(yv=>{const y=Y(yv), zero=yv===0;
+    s+=`<line x1="${mg.l}" y1="${y}" x2="${W-mg.r}" y2="${y}" stroke="${zero?'#b9bfc0':COL.grid}"/>`;
+    s+=txt(mg.l-9,y+4,fmt(yv,sc.dec),{anchor:'end',fill:COL.ink,size:11});});
+  s+=txt(16,(mg.t+H-mg.b)/2,"CO₂ emissions (Mt per year)",{rot:-90,anchor:'middle',size:11.5,fill:COL.muted});
+  for(let x=0;x<=horizon;x+=5)s+=txt(X(x),H-24,x,{anchor:'middle',fill:COL.muted});
+  s+=txt(X(horizon/2),H-6,"Years from decision",{anchor:'middle',size:11.5,fill:COL.muted});
+  // delayed backfill curve, sampled so a decarbonizing backfill slopes down
+  const pts=[]; const n=Math.max(2,Math.round(delay*8));
+  for(let i=0;i<=n;i++){const t=delay*i/n; pts.push([X(t),Y(Math.max(back(t),clean))]);}
+  if(delay>0 && back(0)>clean){
+    s+=`<path d="M ${X(0)} ${Y(clean)} ${pts.map(p=>"L "+p.join(" ")).join(" ")} L ${X(delay)} ${Y(clean)} Z" fill="${COL.redsoft}"/>`;
+  }
+  s+=`<line x1="${X(delay)}" y1="${mg.t}" x2="${X(delay)}" y2="${H-mg.b}" stroke="#c4cacb" stroke-dasharray="3 3"/>`;
+  s+=txt(X(delay)+4,mg.t-6,`line online, yr ${delay}`,{size:10});
+  s+=`<path d="M ${pts.map(p=>p.join(" ")).join(" L ")} L ${X(delay)} ${Y(clean)} L ${X(horizon)} ${Y(clean)}" fill="none" stroke="${COL.red}" stroke-width="2.5"/>`;
+  s+=`<path d="M ${X(0)} ${Y(clean)} L ${X(horizon)} ${Y(clean)}" fill="none" stroke="${COL.blue}" stroke-width="2.5"/>`;
+  // rate labels: backfill at its start, clean at the right edge
+  if(delay>0) s+=txt(X(0)+4,Y(back(0))-7,`${fmt(back(0),back(0)<10?1:0)} Mt/yr while waiting`,{fill:COL.red,weight:700,size:11.5});
+  s+=txt(W-mg.r+6,Y(clean)+4,fmt(clean,1),{fill:COL.blue,weight:700,size:12});
+  if(delay>0 && m.cumMt>0){
+    const cy=(Y(back(delay/2))+Y(clean))/2, wide=(X(delay)-X(0))>150 && (Y(clean)-Y(back(delay/2)))>44;
+    const lbl=`${fmt(m.cumMt,m.cumMt<10?1:0)} Mt`;
+    if(wide){
+      s+=txt(X(delay/2),cy-2,"delay penalty",{anchor:'middle',fill:COL.red,size:11});
+      s+=txt(X(delay/2),cy+15,lbl+" total",{anchor:'middle',fill:COL.red,weight:800,size:15});
+    }else{
+      s+=txt(X(delay)+8,cy+2,lbl,{fill:COL.red,weight:800,size:13});
+      s+=txt(X(delay)+8,cy+17,"delay penalty",{fill:COL.red,size:10});
+    }
+  }
+  s+=`</svg>`; document.getElementById(host).innerHTML=s;
+}
+
+/* ---------- presets ---------- */
+const NWEC={low:{mw:3000},med:{mw:9000},high:{mw:12000}};
+function applyNWEC(k){
+  setVal("c_mw",NWEC[k].mw); render();
+  flash(`Loaded NWEC ${k==="med"?"Medium":k[0].toUpperCase()+k.slice(1)}`);
+}
+function applyBackfill(k){
+  if(k==="claim"){setVal("c_zero",0);}
+  else{const fossil=V("c_coal")/100*V("c_coalef")+(1-V("c_coal")/100)*V("c_gasef");
+    setVal("c_zero",Math.round(Math.max(0,1-0.29/fossil)*100));}
+  render();
+}
+
+/* ---------- share link: only non-default values go in the URL hash ---------- */
+function stateHash(){
+  const p=new URLSearchParams();
+  ALL.forEach(c=>{const v=V(c.id); if(v!==DEFAULTS[c.id]) p.set(c.id,v);});
+  const q=p.toString(); return q?"#"+q:"";
+}
+function readHash(){
+  const p=new URLSearchParams(location.hash.slice(1));
+  ALL.forEach(c=>{if(p.has(c.id)) setVal(c.id,p.get(c.id));});
+}
+function syncUrl(){
+  try{history.replaceState(null,"",location.pathname+location.search+stateHash());}catch(e){}
+}
+let flashT; function flash(msg){const el=document.getElementById("share-msg"); el.textContent=msg;
+  clearTimeout(flashT); flashT=setTimeout(()=>el.textContent="",2200);}
+document.getElementById("share").addEventListener("click",()=>{
+  const url=location.href.split("#")[0]+stateHash();
+  const done=()=>flash("Link copied"), fail=()=>{window.prompt("Copy this link:",url);};
+  try{navigator.clipboard.writeText(url).then(done,fail);}catch(e){fail();}
+});
+
+/* ---------- wiring ---------- */
+function markChanged(){ALL.forEach(c=>document.getElementById("w_"+c.id).classList.toggle("changed",V(c.id)!==DEFAULTS[c.id]));}
+function render(){renderClimate();markChanged();syncUrl();}
+buildControls("climate");
+document.querySelectorAll("[data-reset]").forEach(btn=>btn.addEventListener("click",()=>{
+  CFG[btn.dataset.reset].forEach(c=>setVal(c.id,DEFAULTS[c.id])); render();
+}));
+document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>applyNWEC(b.dataset.preset)));
+document.querySelectorAll("[data-backfill]").forEach(b=>b.addEventListener("click",()=>applyBackfill(b.dataset.backfill)));
+window.addEventListener("hashchange",()=>{readHash();render();});
+readHash(); render();
+</script>
+</body>
+</html>
