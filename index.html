@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Transmission Trade-off Explorer</title>
+<title>Climate Cost of Delay</title>
 <style>
   :root{
     --paper:#ffffff; --page:#f3f5f6; --ink:#121212; --muted:#66706e; --faint:#8a938f;
@@ -46,10 +46,18 @@
   .ctrl label{font-size:14px;font-weight:600}
   .ctrl .unit{color:var(--faint);font-size:11px;white-space:nowrap}
   .ctrl .def{color:var(--muted);font-size:12px;line-height:1.4;margin:2px 0 4px}
-  .ctrl .src{color:var(--faint);font-size:11px;line-height:1.35;margin:0 0 8px;font-style:italic}
-  .ctrl .src .tag{font-style:normal;font-weight:700;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;
+  .ctrl .def{margin-bottom:8px}
+  .notes{margin-top:22px;border-top:1px solid var(--rule);padding-top:12px}
+  .notes summary{cursor:pointer;font-weight:700;color:var(--ink)}
+  .notes .intro{margin:10px 0 6px}
+  .notes dl{margin:0}
+  .notes dt{font-weight:700;color:var(--ink);margin-top:12px}
+  .notes dt .u{font-weight:400;color:var(--faint);font-size:11px}
+  .notes dd{margin:2px 0 0}
+  .notes .src{color:var(--faint);font-size:11.5px;font-style:italic;margin-top:2px}
+  .tag{font-style:normal;font-weight:700;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;
     padding:1px 4px;margin-right:4px;border:1px solid currentColor}
-  .ctrl .src .tag.s{color:var(--blue)} .ctrl .src .tag.g{color:var(--teal)} .ctrl .src .tag.x{color:var(--amber)}
+  .tag.s{color:var(--blue)} .tag.g{color:var(--teal)} .tag.x{color:var(--amber)}
   .ctrl .inrow{display:flex;gap:10px;align-items:center}
   .ctrl.changed label::after{content:" •";color:var(--red)}
   input[type=range]{flex:1;accent-color:var(--red);height:3px;min-width:0}
@@ -87,7 +95,7 @@
 </head>
 <body>
 <header>
-  <div class="mast"><span class="tab"></span><h1>The transmission trade-off</h1></div>
+  <div class="mast"><span class="tab"></span><h1>The climate cost of delayed transmission</h1></div>
   <div class="toolbar">
     <span class="lbl">NWEC build-out</span>
     <button class="chip" data-preset="low" title="3 GW via the Montana–Idaho HVDC line (432 mi, ~$3.1B)">Low · 3 GW</button>
@@ -154,6 +162,13 @@
   <a href="https://windexchange.energy.gov/states/wa" target="_blank" rel="noopener">DOE WINDExchange</a> &amp;
   <a href="https://www.montana.edu/wind/documents/Montana%20Wind%20Status%20Report.pdf" target="_blank" rel="noopener">MSU Montana Wind Status</a> (MT fleet ~33%, high-quality sites 40%+; Columbia Basin ~28–32%).
   Passenger-vehicle CO₂ — <a href="https://www.epa.gov/greenvehicles/greenhouse-gas-emissions-typical-passenger-vehicle" target="_blank" rel="noopener">EPA</a> (4.6 t/yr).
+  <details class="notes">
+    <summary>Variable notes: definitions and where each default comes from</summary>
+    <p class="intro">Each default is tagged <b style="color:var(--blue)">sourced</b> (EPA, EIA, NREL physics),
+      <b style="color:var(--teal)">grounded</b> (tied to a real project or study, e.g. the NWEC Montana connectivity study)
+      or <b style="color:var(--amber)">scenario</b> (a judgement call you should set).</p>
+    <dl id="var-notes"></dl>
+  </details>
 </div>
 
 <script>
@@ -214,7 +229,6 @@ function buildControls(tab){
     wrap.innerHTML=`
       <div class="row"><label for="${c.id}">${c.label}</label><span class="unit">${c.unit}</span></div>
       <div class="def">${c.def}</div>
-      <div class="src">${c.src}</div>
       <div class="inrow">
         <input type="range" id="${c.id}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.value}">
         <input type="number" class="num" id="${c.id}_n" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.value}" aria-label="${c.label}">
@@ -362,6 +376,8 @@ document.getElementById("share").addEventListener("click",()=>{
 function markChanged(){ALL.forEach(c=>document.getElementById("w_"+c.id).classList.toggle("changed",V(c.id)!==DEFAULTS[c.id]));}
 function render(){renderClimate();markChanged();syncUrl();}
 buildControls("climate");
+document.getElementById("var-notes").innerHTML=CFG.climate.map(c=>
+  `<dt>${c.label} <span class="u">${c.unit}</span></dt><dd>${c.def}<div class="src">${c.src}</div></dd>`).join("");
 document.querySelectorAll("[data-reset]").forEach(btn=>btn.addEventListener("click",()=>{
   CFG[btn.dataset.reset].forEach(c=>setVal(c.id,DEFAULTS[c.id])); render();
 }));
